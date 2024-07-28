@@ -41,7 +41,14 @@ Only simple testing is done on Windows
 ### Release Notes
 
 #### v0.0.1 - Initial Version
-Works as a static html server
+| Version | Description |
+| ------- | ----------- |
+| v0.0.1  | Inital working version as a basic static file webserver. |
 
-#### Bugs
-If you go to a directly without index.html, it displays all the files in that directory
+
+#### Known Bugs or shortcomings
+
+v0.0.1
+Many....
+- If you go to a directory without index.html, it displays all the files in that directory
+- No https. Only works on http
