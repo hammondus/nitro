@@ -1,4 +1,5 @@
 # Nitro Web Server
+www.nitro.onl
 
 ## Purpose
 Does the world need another Web Server.
@@ -35,3 +36,12 @@ This binaries will work on:
 Nitro is developed and tested on Mac OS
 Extensive testing and production use is on Linux
 Only simple testing is done on Windows
+
+
+### Release Notes
+
+#### v0.0.1 - Initial Version
+Works as a static html server
+
+#### Bugs
+If you go to a directly without index.html, it displays all the files in that directory
