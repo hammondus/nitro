@@ -129,7 +129,7 @@ func version(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Version string
 	}{
-		Version: "0.0.1",
+		Version: "0.0.2",
 	}
 	tmpl.Execute(w, data)
 }

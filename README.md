@@ -14,7 +14,7 @@ I wanted a project to improve my Go programming skills, and in the process, crea
 
 
 ### Small
-A small, easy to audit code base with minimal dependencies. Use the Go standard library as much as possible
+A small, easy to audit code base with minimal dependencies. Use the Go standard library as much as possible.
 
 ### Performant
 Go has good performance, and with it's built in easy to use and efficient concurrency, I'm aiming for for a high performance web server
@@ -33,9 +33,9 @@ This binaries will work on:
     - Windows 10 or later
 
 #### Development and Testing
-Nitro is developed and tested on Mac OS
-Extensive testing and production use is on Linux
-Only simple testing is done on Windows
+- Nitro is developed and tested on Mac OS
+- Extensive testing and production use is on Linux
+- Only simple testing is done on Windows
 
 
 ### Release Notes
@@ -44,11 +44,4 @@ Only simple testing is done on Windows
 | Version | Description |
 | ------- | ----------- |
 | v0.0.1  | Inital working version as a basic static file webserver. |
-
-
-#### Known Bugs or shortcomings
-
-v0.0.1
-Many....
-- If you go to a directory without index.html, it displays all the files in that directory
-- No https. Only works on http
+| v0.0.2  | No longer returns a directly listing if there is no index.html |
