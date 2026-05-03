@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var nitroVersion string = "0.0.2"
+
 //go:embed static/*
 var staticFiles embed.FS
 
@@ -22,6 +24,7 @@ func main() {
 	}
 
 	var cfg config
+
 	flag.StringVar(&cfg.port, "port", "8080", "Port to listen on")
 	flag.StringVar(&cfg.dir, "dir", ".", "Directory to serve")
 	flag.Parse()
@@ -41,9 +44,9 @@ func main() {
 	fileServer := http.FileServer(fs)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /time", serveTime)
-	mux.HandleFunc("GET /version", version)
-	mux.HandleFunc("/", createFileServerHandler(fileServer))
+	mux.HandleFunc("GET /nitro_time", serveTime)
+	mux.HandleFunc("GET /nitro_version", version)
+	mux.HandleFunc("/", createFileServerHandler(fileServer, cfg.dir))
 
 	server := &http.Server{
 		Addr:         ":" + cfg.port,
@@ -98,15 +101,46 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func createFileServerHandler(fileServer http.Handler) http.HandlerFunc {
+func createFileServerHandler(fileServer http.Handler, dir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		// Wrap the response writer to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
+		if r.URL.Path == "/" {
+			fs := http.Dir(dir)
+			_, err := fs.Open("index.html")
+			if err == nil {
+				// index.html exist, so serve that normally
+				fileServer.ServeHTTP(wrapped, r)
+				log.Printf("[%s] %s (%d %s) %v", r.Method, r.URL.Path, wrapped.statusCode, http.StatusText(wrapped.statusCode), time.Since(start))
+				return
+			}
+			// index.html doesn't exist - serve custom page
+			serveCustomRootPage(w, r)
+			log.Printf("[%s] %s (%d %s) %v", r.Method, r.URL.Path, wrapped.statusCode, http.StatusText(wrapped.statusCode), time.Since(start))
+			return
+
+		}
+
 		fileServer.ServeHTTP(wrapped, r)
 		log.Printf("[%s] %s (%d %s) %v", r.Method, r.URL.Path, wrapped.statusCode, http.StatusText(wrapped.statusCode), time.Since(start))
 	}
+}
+
+// Add this function for your custom root page
+func serveCustomRootPage(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	w.Header().Set("Content-Type", "text/html")
+
+	content, err := staticFiles.ReadFile("static/defaultIndex.html")
+	if err != nil {
+		http.Error(w, "Error loading default index", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("[%s] %s Custom Root Page (%d %s) %v", r.Method, r.URL.Path, 200, http.StatusText(200), time.Since(start))
+	w.WriteHeader(http.StatusOK)
+	w.Write(content)
 }
 
 func serveTime(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +163,7 @@ func version(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Version string
 	}{
-		Version: "0.0.2",
+		Version: nitroVersion,
 	}
 	tmpl.Execute(w, data)
 }
