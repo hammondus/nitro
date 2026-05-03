@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var nitroVersion string = "0.0.2"
+var nitroVersion string = "0.0.3"
 
 //go:embed static/*
 var staticFiles embed.FS
