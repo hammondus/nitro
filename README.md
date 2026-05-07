@@ -8,7 +8,7 @@ Clearly the answer is: No....  There are plenty of good ones in existance.
 I wanted a project to improve my Go programming skills, and in the process, create a web server for my own use that was:
 - small
 - performant
-- zero config for internal usage
+- zero config for simple use. Supports `toml` for additional configuration
 - cross platform: Mac, Linux an Windows
 - a single statically compiled binary with no dependencies
 
@@ -36,12 +36,3 @@ This binaries will work on:
 - Nitro is developed and tested on Mac OS
 - Extensive testing and production use is on Linux
 - Only simple testing is done on Windows
-
-
-### Release Notes
-
-#### v0.0.1 - Initial Version
-| Version | Description |
-| ------- | ----------- |
-| v0.0.1  | Inital working version as a basic static file webserver. |
-| v0.0.2  | No longer returns a directly listing if there is no index.html |

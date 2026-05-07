@@ -11,53 +11,45 @@ import (
 	"time"
 )
 
-var nitroVersion string = "0.0.3"
+var nitroVersion string = "0.0.4"
 
 //go:embed static/*
 var staticFiles embed.FS
 
 func main() {
+	fmt.Println("NITRO")
+	var userCfg Config
 
-	type config struct {
-		port string
-		dir  string
-	}
-
-	var cfg config
-
-	flag.StringVar(&cfg.port, "port", "8080", "Port to listen on")
-	flag.StringVar(&cfg.dir, "dir", ".", "Directory to serve")
+	flag.StringVar(&userCfg.Port, "port", "", "Port to listen on (default '8080')")
+	flag.StringVar(&userCfg.Dir, "dir", "", "Directory to serve (default .)")
 	flag.Parse()
 
-	// if serving files from the current working dir, display what that dir is.
-	if cfg.dir == "." {
-		dir, err := os.Getwd()
-		if err != nil {
-			cfg.dir = "."
-		}
-		cfg.dir = dir
-	}
+	config := loadConfig("config.toml", userCfg)
+
+	fmt.Println("userCfg", userCfg)
+	fmt.Println("config", config)
 
 	// Modified file system so that a directory without index.html doesn't return a directory listing to the user
 	// which is the stupid default action of http.FileServer
-	fs := noDirFileSystem{http.Dir(cfg.dir)}
+	fs := noDirFileSystem{http.Dir(config.Dir)}
 	fileServer := http.FileServer(fs)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /nitro_time", serveTime)
 	mux.HandleFunc("GET /nitro_version", version)
-	mux.HandleFunc("/", createFileServerHandler(fileServer, cfg.dir))
+	mux.HandleFunc("/", createFileServerHandler(fileServer, config.Dir))
 
 	server := &http.Server{
-		Addr:         ":" + cfg.port,
+		Addr:         ":" + config.Port,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	log.Printf("Serving %s on http://localhost:%s", cfg.dir, cfg.port)
+	log.Printf("Serving %s on http://localhost:%s", config.Dir, config.Port)
 	log.Printf("Additional endpoints:")
-	log.Printf("  GET  /time  - Get current server time")
+	log.Printf("  GET /nitro_time    - Get current server time")
+	log.Printf("  GET /nitro_version - get nitro version")
 	log.Fatal(server.ListenAndServe())
 }
 

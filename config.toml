@@ -1,0 +1,24 @@
+port = "8282"
+dir = "."
+
+[features]
+enabled_features = ["auth","logging","firewall"]
+disabled_features = ["dirlist","cache"]
+
+[[server]]
+hostname = "blobby.hammond.zone"
+port = 8080
+ssl = false
+
+[[server]]
+hostname = "craigus.hammond.zone"
+port = 443
+ssl = true
+
+[[server]]
+hostname = "stuff.testes.com"
+port = 80
+ssl = false
+
+[host]
+name = "myhost"
