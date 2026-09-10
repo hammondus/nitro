@@ -2,3 +2,7 @@ go.work
 go.work.sum
 nitro
 dist/
+# Per-deployment config and site roots live next to compose.yaml on the
+# deploy host, not in the repo.
+nitro.conf
+sites/

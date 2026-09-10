@@ -11,7 +11,7 @@ import (
 
 // listingFixture: a directory with mixed sizes, dates, a subdirectory,
 // and a dotfile that must not appear.
-func listingFixture(t *testing.T) *staticHandler {
+func listingFixture(t *testing.T) http.Handler {
 	t.Helper()
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "docs"), 0o755); err != nil {

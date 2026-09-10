@@ -21,6 +21,7 @@ caps.
 ## nitro composes nitrokit unchanged
 
 nitro uses `NewServer`, `Run`, `RunTLS`, `ACME`, `NewRoute53`, `AccessLog`,
+`WriteBudget`, `ParseTrustedProxies`, `Healthz`,
 `NoCache`, `HSTS`, and `HealthProbe` as shipped. That zero-change fit is
 the result the extraction aimed for, and worth recording.
 
@@ -136,10 +137,11 @@ stream and any download slower than that, so nitro takes the documented
 escape hatch (the reason `NewServer` returns the plain struct) and sets
 it to 0. In its place:
 
-- Static responses arm a rolling per-write deadline
-  (`deadlineWriter`, 30 s budget, renewed as writes make progress) — the
-  nginx `send_timeout` model: a slow download lives, a stalled client is
-  cut.
+- Static responses run under `nitrokit.WriteBudget` (30 s budget,
+  renewed as writes make progress) — the nginx `send_timeout` model: a
+  slow download lives, a stalled client is cut. nitro carried its own
+  copy (`deadlineWriter`) until nitrokit shipped the wrapper; retired
+  2026-09-10.
 - Proxied requests get no client-side write deadline — a generic proxy
   cannot bound response duration — and upstream stalls are bounded
   instead by the shared transport: 5 s dial, 60 s response-header
@@ -167,11 +169,44 @@ it to 0. In its place:
   with a trailing slash, and a directory without one all 301 to the one
   clean form before the filesystem is touched.
 
-## Deploying before nitrokit resolves
+## Depending on nitrokit
 
-nitrokit has no remote and no tags yet, so `go.mod` cannot require it;
-the git-ignored `go.work` (this directory plus `../nitrokit`) is the only
-resolution path, per the house module rules. Consequence: a Docker build,
-which excludes `go.work`, cannot build nitro until nitrokit is pushed and
-tagged — at which point the require gets pinned and the workspace becomes
-optional. The Dockerfile lands then, not before.
+nitrokit has been published at `github.com/hammondus/nitrokit` since
+2026-09-01, so `go.mod` pins it (v0.3.0, pinned 2026-09-10) and the Docker
+build resolves it from the module proxy like any dependency. The pin
+brought three indirect `golang.org/x/` lines: nitrokit's ACME support
+needs `x/crypto`. nitro itself imports nothing outside the standard
+library and nitrokit.
+
+The git-ignored `go.work` (this directory plus `../nitrokit`) stays as the
+development path for working against an unreleased nitrokit change. With
+the file present, `go` builds against `../nitrokit`; without it
+(`GOWORK=off`, or on the deploy host, where the file does not exist) it
+builds against the pin. Before bumping the pin, run `make test` both ways.
+
+Until 2026-09-10 the workspace was the only resolution path, which is why
+the Dockerfile did not exist before then.
+
+## Docker: build on the host, distroless, nonroot
+
+- **Two-stage build on the deploy host.** `make deploy` is `git pull`
+  then `docker compose up -d --build`; nothing has to be copied over.
+  The cost is that the image build needs network access to the module
+  proxy for nitrokit.
+- **`distroless/static`, nonroot.** A static binary in an image with no
+  shell and no libc, running as uid 65532. Ports below 1024 are not a
+  problem: Docker sets `ip_unprivileged_port_start=0` inside containers,
+  so a TLS deployment binds :80 and :443 without a capability. A host
+  that overrides that sysctl cannot run the TLS mode, because `RunTLS`
+  binds :80 for ACME challenges and there is no way to remap it.
+- **Config and site roots are read-only bind mounts**
+  (`/etc/nitro/nitro.conf`, `/srv`); the certificate cache is a named
+  volume at `/var/lib/nitro`, created with the nonroot owner in a prep
+  stage. A named volume mounted over an empty root-owned directory is
+  unwritable by an unprivileged process, and the failure surfaces only at
+  the first certificate request.
+- **The `HEALTHCHECK` fails under a `tls` block.** `nitrokit.HealthProbe`
+  dials the listen port over plain HTTP, and with TLS that port speaks
+  TLS. The probe is correct for the plain-HTTP deployment compose defaults
+  to. Fixing it means teaching `HealthProbe` about TLS, or probing :80 —
+  a nitrokit change, flagged and not made.

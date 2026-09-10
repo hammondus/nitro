@@ -14,10 +14,10 @@ import (
 
 // writeBudget bounds how long a single write to the client may stall.
 // The server's global WriteTimeout is 0 (a proxied stream must be able
-// to outlive any constant), so static responses arm their own rolling
-// deadline instead: each write buys another budget, like nginx
-// send_timeout, so a slow download survives while a stalled client is
-// cut.
+// to outlive any constant), so static responses run under
+// nitrokit.WriteBudget instead: each write buys another budget, like
+// nginx send_timeout, so a slow download survives while a stalled
+// client is cut.
 const writeBudget = 30 * time.Second
 
 // staticHandler serves one site's files from an os.Root, which refuses
@@ -28,12 +28,14 @@ type staticHandler struct {
 	spa     bool
 }
 
-func newStaticHandler(dir string, listing, spa bool) (*staticHandler, error) {
+// newStaticHandler serves dir, wrapped in the rolling write deadline.
+func newStaticHandler(dir string, listing, spa bool) (http.Handler, error) {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, err
 	}
-	return &staticHandler{root: root, listing: listing, spa: spa}, nil
+	h := &staticHandler{root: root, listing: listing, spa: spa}
+	return nitrokit.WriteBudget(writeBudget, h), nil
 }
 
 func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +44,6 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	w = newDeadlineWriter(w)
-
 	// Canonicalise before touching the filesystem: /a//b, /a/./b and
 	// /a/../b all redirect to the clean form, so every file has one URL.
 	canon := path.Clean(r.URL.Path)
@@ -169,35 +169,3 @@ func redirect(w http.ResponseWriter, r *http.Request, loc string) {
 	}
 	http.Redirect(w, r, loc, http.StatusMovedPermanently)
 }
-
-// deadlineWriter renews the connection's write deadline as writes make
-// progress, at most once a second. Unwrap keeps http.ResponseController
-// working through it.
-type deadlineWriter struct {
-	http.ResponseWriter
-	rc   *http.ResponseController
-	last time.Time
-}
-
-func newDeadlineWriter(w http.ResponseWriter) *deadlineWriter {
-	d := &deadlineWriter{ResponseWriter: w, rc: http.NewResponseController(w)}
-	d.bump()
-	return d
-}
-
-func (d *deadlineWriter) bump() {
-	now := time.Now()
-	if now.Sub(d.last) >= time.Second {
-		// Ignored error: a connection that cannot take a deadline (an
-		// httptest recorder) just runs without one.
-		d.rc.SetWriteDeadline(now.Add(writeBudget))
-		d.last = now
-	}
-}
-
-func (d *deadlineWriter) Write(b []byte) (int, error) {
-	d.bump()
-	return d.ResponseWriter.Write(b)
-}
-
-func (d *deadlineWriter) Unwrap() http.ResponseWriter { return d.ResponseWriter }

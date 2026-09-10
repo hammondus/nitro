@@ -1,0 +1,14 @@
+# Only the Go source, go.mod and go.sum are needed to build the image.
+.git
+.gitignore
+.claude/
+*.md
+dist/
+nitro
+# go.work points at ../nitrokit, which is outside the build context; the
+# image builds against the version pinned in go.mod.
+go.work
+go.work.sum
+# Per-deployment config and site roots are bind-mounted, never baked in.
+nitro.conf
+sites/

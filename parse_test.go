@@ -109,7 +109,7 @@ func TestParseErrors(t *testing.T) {
 		{"suggestion", "listn :8080", `did you mean "listen"`},
 		{"site suggestion", "site a.com {\nlsting on\n}", `did you mean "listing"`},
 		{"listen args", "listen :80 :443", "listen takes 1"},
-		{"bad trusted", "trusted-proxies 10.0.0.1", "trusted-proxies"},
+		{"bad trusted", "trusted-proxies 10.0.0.1/33", "trusted-proxies"},
 		{"unclosed site", "site a.com {\nroot .", "never closed"},
 		{"stray brace", "}", "} without an open block"},
 		{"site needs brace", "site a.com", "opens a block"},

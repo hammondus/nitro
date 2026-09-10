@@ -58,7 +58,7 @@ func main() {
 	srv := nitrokit.NewServer(cfg.Listen, handler)
 	// A proxied stream (SSE, a long download) must be able to outlive
 	// any constant, so the global write timeout goes: static responses
-	// arm their own rolling deadline instead (see writeBudget), and
+	// run under nitrokit.WriteBudget instead (see writeBudget), and
 	// upstream stalls are bounded by proxyTransport.
 	srv.WriteTimeout = 0
 

@@ -1,0 +1,28 @@
+services:
+  nitro:
+    build: .
+    image: nitro:latest
+    restart: unless-stopped
+    # Plain-HTTP deployment behind another proxy. The config must bind a
+    # wildcard (`listen :8080`): a loopback bind is unreachable through the
+    # port mapping.
+    ports:
+      - "127.0.0.1:8080:8080"
+    # TLS deployment: nitro terminates TLS itself and also binds :80 for
+    # ACME challenges and the HTTPS redirect. Replace the ports above with:
+    #   - "80:80"
+    #   - "443:443"
+    # and set `listen :443` plus `tls { cache /var/lib/nitro }` in the config.
+    volumes:
+      - ./nitro.conf:/etc/nitro/nitro.conf:ro
+      - ./sites:/srv:ro
+      - tls:/var/lib/nitro
+    # Only needed for `dns route53 ZONEID`; the solver reads AWS_* from the
+    # environment.
+    # environment:
+    #   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+    #   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    #   AWS_REGION: ${AWS_REGION:-us-east-1}
+
+volumes:
+  tls:

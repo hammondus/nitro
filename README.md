@@ -3,7 +3,8 @@
 nitro is a general-purpose web server: static files, virtual hosts, a
 reverse proxy, redirects, and its own TLS termination, configured by one
 small file. Think of a cut-down nginx that is a single static binary.
-It is built on [nitrokit](../nitrokit) and has no other dependencies.
+It is built on [nitrokit](https://github.com/hammondus/nitrokit) and has
+no other dependencies.
 
 ## Quick start
 
@@ -142,6 +143,25 @@ on SIGINT or SIGTERM drains in-flight requests for up to 10 seconds
 tests, `make release` cross-compiles stripped static binaries for
 linux/arm64, linux/amd64, macOS, and Windows into `dist/`.
 
-nitro depends on nitrokit through a git-ignored `go.work` while
-nitrokit is unpublished — see DESIGN-DECISIONS.md for what that means
-for Docker builds.
+## Docker
+
+The Dockerfile builds nitro from source into a distroless image, and
+`compose.yaml` runs it. Inside the container nitro reads
+`/etc/nitro/nitro.conf`, serves site roots from `/srv`, and keeps
+certificates in a volume at `/var/lib/nitro`.
+
+To deploy, put `nitro.conf` and a `sites/` directory next to
+`compose.yaml` on the host, then run `make deploy`. The config must bind
+a wildcard address (`listen :8080`, not `127.0.0.1:8080`), because a
+loopback bind is unreachable through the port mapping. For a TLS
+deployment, publish ports 80 and 443 instead of 8080 and point `tls {
+cache }` at `/var/lib/nitro`; `compose.yaml` shows both.
+
+The image's health check dials the listen port over plain HTTP, so it
+reports unhealthy under a `tls` block. See DESIGN-DECISIONS.md.
+
+## Developing against nitrokit
+
+`go.mod` pins a released nitrokit. To work against an unreleased change
+in `../nitrokit`, add a git-ignored `go.work` listing `.` and
+`../nitrokit`; the Docker build ignores it and uses the pin.

@@ -94,7 +94,7 @@ func peerIsLoopback(r *http.Request) bool {
 type siteHandler struct {
 	routes  []Route
 	proxies map[string]http.Handler // proxy route prefix → reverse proxy
-	static  *staticHandler          // nil for proxy- or redirect-only sites
+	static  http.Handler            // nil for proxy- or redirect-only sites
 }
 
 func buildSite(site *Site, trust *nitrokit.ProxyTrust, logger *slog.Logger) (http.Handler, error) {
