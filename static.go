@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"io/fs"
+	"mime"
 	"net/http"
 	"os"
 	"path"
@@ -133,21 +134,38 @@ func (h *staticHandler) serveFile(w http.ResponseWriter, r *http.Request, rel st
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	setCachePolicy(w, rel)
+	setCachePolicy(w)
 	// ServeContent brings Last-Modified/If-Modified-Since, ranges, HEAD,
 	// and Content-Type sniffing.
 	http.ServeContent(w, r, path.Base(rel), info.ModTime(), f)
 }
 
-// setCachePolicy is the house policy at the chokepoint: pages revalidate
-// every time, assets cache briefly. These are unhashed disk files whose
-// content can change under the URL, so nothing is ever immutable.
-func setCachePolicy(w http.ResponseWriter, rel string) {
-	switch path.Ext(rel) {
-	case ".html", ".htm", "":
+// setCachePolicy is the house policy at the chokepoint: every response
+// revalidates. These are unhashed disk files whose content can change
+// under the URL, and a page must never run against an older copy of an
+// asset it references, so nothing gets a lifetime. ServeContent's
+// Last-Modified makes each revalidation a 304. A Cache-Control the site
+// set with a header directive is stronger intent, so it stands.
+func setCachePolicy(w http.ResponseWriter) {
+	if w.Header().Get("Cache-Control") == "" {
 		nitrokit.NoCache(w)
-	default:
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+	}
+}
+
+// Go's built-in MIME table lacks these, and a distroless image has no
+// /etc/mime.types to fill the gap, so ServeContent would sniff a manifest
+// as text/plain and a font as application/octet-stream.
+func init() {
+	for ext, typ := range map[string]string{
+		".webmanifest": "application/manifest+json",
+		".woff":        "font/woff",
+		".woff2":       "font/woff2",
+		".ttf":         "font/ttf",
+		".otf":         "font/otf",
+	} {
+		if err := mime.AddExtensionType(ext, typ); err != nil {
+			panic(err)
+		}
 	}
 }
 

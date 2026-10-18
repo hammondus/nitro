@@ -103,6 +103,31 @@ reveals nothing. Listings omit them. The survey of real-world scanner
 traffic behind every public server makes this the only safe default; a
 future directive can open it up if a real need appears.
 
+## Every static response revalidates; a site may override (2026-10-18)
+
+Every file and listing is `Cache-Control: no-cache`. This replaces the
+original split, which gave HTML `no-cache` and everything else
+`public, max-age=3600`. The files nitro serves are unhashed, so a URL's
+content changes under it on deploy. With a lifetime on assets, a fresh
+page could run for up to an hour against the CSS, JavaScript, or service
+worker it replaced. That is the failure the house caching rule exists to
+prevent. `http.ServeContent` sends `Last-Modified`, so each revalidation
+is a 304 and costs one round trip, not a transfer.
+
+A site's `header Cache-Control` now wins over the default. Site headers
+are set before the static handler runs, and the handler used to
+overwrite them, so a site could not opt out. The default applies only
+when nothing is set, so a stronger policy stays visible in the config
+that asked for it.
+
+## Missing MIME types are registered at startup (2026-10-18)
+
+Go's built-in table has no entry for `.webmanifest` or the web font
+types, and the distroless image ships no `/etc/mime.types`. Without
+registration, `ServeContent` sniffs a manifest as `text/plain` and a
+font as `application/octet-stream`. The list stays to types a static
+site actually serves; anything rarer can wait for a real need.
+
 ## The proxy hands upstream one X-Forwarded-For value
 
 nitro is the trust boundary. It resolves the real client itself —

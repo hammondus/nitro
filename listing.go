@@ -10,8 +10,6 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-
-	"github.com/hammondus/nitrokit"
 )
 
 // serveListing renders the directory listing for rel (canon is the URL
@@ -54,7 +52,7 @@ func (h *staticHandler) serveListing(w http.ResponseWriter, r *http.Request, rel
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	nitrokit.NoCache(w)
+	setCachePolicy(w)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(buf.Bytes())
 }

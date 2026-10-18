@@ -175,6 +175,29 @@ func TestSiteHeadersAndHSTS(t *testing.T) {
 	}
 }
 
+// A site's own Cache-Control is deliberate, so the static default must
+// not overwrite it; without one, the default applies.
+func TestSiteCacheControlOverridesDefault(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "index.html", "x")
+	writeFile(t, dir, "style.css", "body{}")
+	s := testServer(t, &Config{
+		Listen: ":0",
+		Sites: []*Site{
+			{Host: "a.com", Root: dir, Headers: []Header{{"Cache-Control", "public, max-age=600"}}},
+			{Host: "b.com", Root: dir},
+		},
+	})
+	for _, p := range []string{"/", "/style.css"} {
+		if got := hostGet(t, s, "a.com", p).Header().Get("Cache-Control"); got != "public, max-age=600" {
+			t.Errorf("a.com%s Cache-Control = %q, want the site's", p, got)
+		}
+		if got := hostGet(t, s, "b.com", p).Header().Get("Cache-Control"); got != "no-cache" {
+			t.Errorf("b.com%s Cache-Control = %q, want no-cache", p, got)
+		}
+	}
+}
+
 func TestPrefixMatch(t *testing.T) {
 	tests := []struct {
 		prefix, path string

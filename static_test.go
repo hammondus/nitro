@@ -64,7 +64,7 @@ func TestStaticServing(t *testing.T) {
 		location string
 	}{
 		{path: "/", status: 200, body: "home", cache: "no-cache"},
-		{path: "/style.css", status: 200, body: "body{}", cache: "public, max-age=3600"},
+		{path: "/style.css", status: 200, body: "body{}", cache: "no-cache"},
 		{path: "/sub/page.html", status: 200, body: "sub", cache: "no-cache"},
 		{path: "/sub", status: 301, location: "/sub/"},
 		{path: "/sub/", status: 404}, // no index, no listing
@@ -101,6 +101,29 @@ func TestStaticServing(t *testing.T) {
 		}
 		if tt.location != "" && rec.Header().Get("Location") != tt.location {
 			t.Errorf("GET %s Location = %q, want %q", tt.path, rec.Header().Get("Location"), tt.location)
+		}
+	}
+}
+
+func TestStaticMIMETypes(t *testing.T) {
+	dir := t.TempDir()
+	tests := map[string]string{
+		"app.webmanifest": "application/manifest+json",
+		"font.woff2":      "font/woff2",
+		"font.woff":       "font/woff",
+		"font.ttf":        "font/ttf",
+		"font.otf":        "font/otf",
+	}
+	for name := range tests {
+		writeFile(t, dir, name, "{}")
+	}
+	h, err := newStaticHandler(dir, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range tests {
+		if got := get(t, h, "/"+name).Header().Get("Content-Type"); got != want {
+			t.Errorf("GET /%s Content-Type = %q, want %q", name, got, want)
 		}
 	}
 }

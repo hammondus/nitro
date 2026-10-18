@@ -108,7 +108,8 @@ exactly one site, that site answers every host.
   single-value `X-Forwarded-For` holding the client address nitro
   itself resolved — a backend needs no trust list beyond nitro.
 - `header NAME VALUE` — set an extra response header on everything the
-  site serves. Repeatable.
+  site serves. Repeatable. `header Cache-Control VALUE` replaces the
+  default cache policy for the site.
 - `hsts` — send `Strict-Transport-Security` (one year). Only valid
   with a `tls` block: the TLS terminator owns that policy.
 
@@ -126,9 +127,13 @@ Requests matching no route fall through to `root`.
 - Any path containing a dot-prefixed segment (`.git`, `.env`,
   `.DS_Store`) is a 404, identical to an absent file, and listings
   omit dotfiles.
-- HTML responses are `Cache-Control: no-cache` (stored, revalidated
-  every time); other files get `public, max-age=3600`. Files on disk
-  are unhashed, so nothing is ever marked immutable.
+- Every file and listing is `Cache-Control: no-cache`: stored, but
+  revalidated on every use, which `Last-Modified` turns into a 304.
+  Files on disk are unhashed, so nothing gets a lifetime. A site's own
+  `header Cache-Control` takes precedence.
+- Web app manifests and fonts (`.webmanifest`, `.woff`, `.woff2`,
+  `.ttf`, `.otf`) get their registered types. Go's built-in table lacks
+  them, and a distroless image has no `/etc/mime.types`.
 - `GET /healthz` from a loopback peer answers the built-in liveness
   probe; `nitro -healthcheck` backs a Docker `HEALTHCHECK` with it.
   From anywhere else, `/healthz` is an ordinary path.
